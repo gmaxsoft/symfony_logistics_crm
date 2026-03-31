@@ -1,0 +1,10 @@
+{
+  "senderAddress": "ul. Marszałkowska 1, 00-001 Warszawa",
+  "receiverAddress": "ul. Floriańska 10, 31-021 Kraków",
+  "weight": 2.5,
+  "courierName": "Jan Kowalski",
+  "senderLatitude": 52.2297,
+  "senderLongitude": 21.0122,
+  "receiverLatitude": 50.0647,
+  "receiverLongitude": 19.9450
+}
