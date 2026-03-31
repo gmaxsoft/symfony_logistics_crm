@@ -124,15 +124,12 @@ jobs:
         continue-on-error: true
 
       - name: Create coverage directory
-        run: mkdir -p backend/coverage
+        working-directory: backend
+        run: mkdir -p coverage
 
       - name: Run PHPUnit tests
         working-directory: backend
-        run: |
-          vendor/bin/phpunit \
-            --coverage-text \
-            --log-junit=../coverage/junit.xml \
-            --coverage-clover=../coverage/clover.xml
+        run: vendor/bin/phpunit --coverage-text --log-junit=coverage/junit.xml
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           APP_ENV: test
@@ -150,17 +147,17 @@ jobs:
 
   # ─── Frontend: Lint + Type Check + Build ─────────────────────────────────────
   frontend:
-    name: Frontend (Node 20)
+    name: Frontend (Node 24)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
@@ -305,10 +302,10 @@ jobs:
             sleep 2
           done
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
