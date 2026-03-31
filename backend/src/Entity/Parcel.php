@@ -23,7 +23,6 @@ class Parcel
     private ?Uuid $id = null;
 
     #[ORM\Column(length: 32, unique: true)]
-    #[Assert\NotBlank]
     #[Assert\Length(min: 8, max: 32)]
     private ?string $trackingNumber = null;
 
