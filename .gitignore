@@ -1,0 +1,38 @@
+# ─── Environment ──────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ─── Docker volumes / runtime ─────────────────────────────────────────────────
+docker/data/
+
+# ─── Backend (Symfony) ────────────────────────────────────────────────────────
+backend/vendor/
+backend/var/
+backend/.env.local
+backend/.env.*.local
+backend/public/bundles/
+
+# ─── Frontend (Vue / Vite / Node) ─────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ─── Node (root) ──────────────────────────────────────────────────────────────
+node_modules/
+
+# ─── OS / IDE ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.log
+
+# ─── Test artifacts ───────────────────────────────────────────────────────────
+cypress/videos/
+cypress/screenshots/
+coverage/
+backend/coverage/
