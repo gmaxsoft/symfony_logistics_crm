@@ -19,6 +19,62 @@ Repository: [github.com/gmaxsoft/symfony_logistics_crm](https://github.com/gmaxs
 | Quality (frontend) | ESLint, TypeScript (`vue-tsc`) |
 | CI/CD | GitHub Actions (`.github/workflows/main.yml`) |
 
+## Architecture
+
+The codebase is a **monorepo**: the backend and frontend are versioned together, share Docker Compose wiring and root-level tooling (Cypress, npm lockfile), but **deploy and run as separate processes** — the SPA talks to Symfony only over **HTTP (REST + JSON)**.
+
+### Logical layers (backend)
+
+- **HTTP / API** — Attribute-routed controllers (e.g. `ParcelController`) validate input (DTOs + Validator), return JSON, and delegate state changes to the workflow.
+- **Domain** — The `Parcel` entity and `ParcelStatus` enum model the core concept; lifecycle hooks keep timestamps and identifiers consistent.
+- **Workflow** — Symfony Workflow is configured as a **state machine** (`config/packages/workflow.yaml`). Allowed transitions and **guards** (Expression language) live in config; `ParcelWorkflowSubscriber` reacts to workflow events (logging, side effects such as `deliveredAt`).
+- **Persistence** — Doctrine ORM maps entities to PostgreSQL; migrations live under `backend/migrations/`.
+- **Async / infra** — Messenger can offload work (e.g. mail) to Redis-backed transports per `config/packages/messenger.yaml`.
+
+### Frontend structure
+
+- **Vue 3 + composition API** — Views under `frontend/src/views/`, reusable pieces under `frontend/src/components/`.
+- **State** — Pinia store (`parcelStore`) coordinates list/detail data and workflow transitions from the API.
+- **API client** — Axios instance and typed DTOs under `frontend/src/api/` and `frontend/src/types/`.
+- **Routing** — Vue Router; the courier dashboard consumes `/api/parcels/...` endpoints (including `GET .../transitions` for dynamic action buttons).
+
+### Runtime topology (Docker)
+
+Nginx terminates HTTP and forwards PHP to **PHP-FPM**; the **Vite** container is used for local HMR. PostgreSQL holds application data; Redis backs Messenger; Mailpit captures outbound mail in development.
+
+```mermaid
+flowchart LR
+  subgraph client [Browser]
+    SPA[Vue SPA]
+  end
+  subgraph edge [Edge]
+    Nginx[Nginx]
+    Vite[Vite dev]
+  end
+  subgraph app [Application]
+    PHP[PHP-FPM Symfony]
+  end
+  subgraph data [Data and async]
+    PG[(PostgreSQL)]
+    Redis[(Redis)]
+    Mail[Mailpit]
+  end
+  SPA -->|dev: API proxy / direct URL| Vite
+  SPA -->|prod or /api| Nginx
+  Nginx --> PHP
+  PHP --> PG
+  PHP --> Redis
+  PHP -.-> Mail
+```
+
+In **development**, the UI often runs on port **5173** and calls the API on **8080** (see `VITE_API_BASE_URL` and CORS). In **production**, Nginx can serve the built SPA from `frontend/dist` while still proxying `/api` to Symfony.
+
+### Design choices (short)
+
+- **Workflow in Symfony**, not in the client — the browser asks which transitions are allowed; the server remains the source of truth for parcel state.
+- **Thin controllers** — orchestration and serialization in the controller layer; heavy rules in workflow config + subscribers.
+- **Tests at three levels** — PHPUnit unit tests (entities/enums), integration tests (`WebTestCase` + real HTTP kernel), Cypress against running backend + Vite.
+
 ## Prerequisites
 
 - Docker Desktop with Compose v2 (recommended for the full stack)
