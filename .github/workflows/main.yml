@@ -6,7 +6,9 @@ on:
   pull_request:
     branches: [main, master]
 
+# Use Node.js 24 to silence the Node.js 20 deprecation warnings
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   POSTGRES_DB: logistics_crm_test
   POSTGRES_USER: app
   POSTGRES_PASSWORD: secret
@@ -15,10 +17,11 @@ env:
   APP_ENV: test
   APP_SECRET: test_secret_not_for_production_use
   MESSENGER_TRANSPORT_DSN: in-memory://
-  MAILER_DSN: null://null
+  MAILER_DSN: "null://null"
+  CORS_ALLOW_ORIGIN: "'^https?://(localhost|127\\.0\\.0\\.1)(:[0-9]+)?$'"
 
 jobs:
-  # ─── Backend: PHP Static Analysis + Tests ────────────────────────────────────
+  # ─── Backend: Lint + Tests ────────────────────────────────────────────────────
   backend:
     name: Backend (PHP 8.3)
     runs-on: ubuntu-latest
@@ -56,7 +59,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: pdo, pdo_pgsql, redis, intl, zip, opcache, bcmath, mbstring
+          extensions: pdo, pdo_pgsql, redis, intl, zip, opcache, bcmath, mbstring, sockets
           coverage: xdebug
           tools: composer:v2
 
@@ -72,31 +75,71 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('backend/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
-      - name: Install Composer dependencies
+      - name: Install Composer dependencies (no post-scripts in CI)
         working-directory: backend
-        run: composer install --prefer-dist --no-progress --no-interaction
+        run: composer install --prefer-dist --no-progress --no-interaction --no-scripts
+
+      - name: Dump autoloader
+        working-directory: backend
+        run: composer dump-autoload --optimize
 
       - name: Copy test env
         working-directory: backend
         run: cp .env.test .env.local
 
-      - name: Create test database
+      - name: Warmup Symfony cache (dev, for PHPStan container XML)
+        working-directory: backend
+        run: |
+          php bin/console cache:warmup --env=dev \
+            --no-debug \
+            -e dev
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          APP_ENV: dev
+          APP_SECRET: ${{ env.APP_SECRET }}
+        continue-on-error: true
+
+      - name: Run PHP CS Fixer (check only)
+        working-directory: backend
+        run: vendor/bin/php-cs-fixer check --diff --no-interaction
+
+      - name: Run PHPStan (static analysis)
+        working-directory: backend
+        run: vendor/bin/phpstan analyse --memory-limit=256M --no-progress
+
+      - name: Run Psalm (static analysis)
+        working-directory: backend
+        run: vendor/bin/psalm --no-progress --output-format=github
+        continue-on-error: true
+
+      - name: Create test database and run migrations
         working-directory: backend
         run: |
           php bin/console doctrine:database:create --env=test --if-not-exists
           php bin/console doctrine:migrations:migrate --env=test --no-interaction
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          APP_ENV: test
+          APP_SECRET: ${{ env.APP_SECRET }}
+          MESSENGER_TRANSPORT_DSN: ${{ env.MESSENGER_TRANSPORT_DSN }}
+          MAILER_DSN: ${{ env.MAILER_DSN }}
 
-      - name: Run PHPStan (static analysis)
-        working-directory: backend
-        run: |
-          php bin/console cache:warmup --env=dev || true
-          vendor/bin/phpstan analyse --memory-limit=256M --no-progress
+      - name: Create coverage directory
+        run: mkdir -p backend/coverage
 
       - name: Run PHPUnit tests
         working-directory: backend
-        run: vendor/bin/phpunit --coverage-text --log-junit=coverage/junit.xml
+        run: |
+          vendor/bin/phpunit \
+            --coverage-text \
+            --log-junit=../coverage/junit.xml \
+            --coverage-clover=../coverage/clover.xml
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+          APP_ENV: test
+          APP_SECRET: ${{ env.APP_SECRET }}
+          MESSENGER_TRANSPORT_DSN: ${{ env.MESSENGER_TRANSPORT_DSN }}
+          MAILER_DSN: ${{ env.MAILER_DSN }}
 
       - name: Upload PHPUnit coverage
         uses: actions/upload-artifact@v4
@@ -104,8 +147,9 @@ jobs:
         with:
           name: phpunit-coverage
           path: backend/coverage/
+          if-no-files-found: warn
 
-  # ─── Frontend: Lint + Type Check + Build ────────────────────────────────────
+  # ─── Frontend: Lint + Type Check + Build ─────────────────────────────────────
   frontend:
     name: Frontend (Node 20)
     runs-on: ubuntu-latest
@@ -119,15 +163,14 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Install frontend dependencies
-        working-directory: frontend
+      - name: Install all dependencies (npm workspaces)
         run: npm ci
 
       - name: Run ESLint
         working-directory: frontend
-        run: npm run lint
+        run: npm run lint:check
 
       - name: Run TypeScript type check
         working-directory: frontend
@@ -136,6 +179,8 @@ jobs:
       - name: Build frontend (production)
         working-directory: frontend
         run: npm run build
+        env:
+          VITE_API_BASE_URL: /api
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -144,7 +189,7 @@ jobs:
           path: frontend/dist/
           retention-days: 7
 
-  # ─── Docker: Build and smoke test ────────────────────────────────────────────
+  # ─── Docker: Build smoke test ─────────────────────────────────────────────────
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
@@ -161,7 +206,7 @@ jobs:
       - name: Create .env for Docker
         run: cp .env.example .env
 
-      - name: Build PHP image
+      - name: Build PHP image (dev stage)
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -172,7 +217,7 @@ jobs:
           cache-to: type=gha,mode=max
           tags: logistics-php:ci
 
-      - name: Build Frontend image
+      - name: Build Frontend image (dev stage)
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
@@ -183,13 +228,14 @@ jobs:
           cache-to: type=gha,mode=max
           tags: logistics-frontend:ci
 
-      - name: Docker Compose smoke test
+      - name: Start infra services and verify
         run: |
-          docker compose up -d database redis
-          sleep 10
+          docker compose up -d database redis mailpit
+          sleep 15
           docker compose ps
+          docker compose exec database pg_isready -U app
 
-  # ─── E2E: Cypress Tests ──────────────────────────────────────────────────────
+  # ─── E2E: Cypress Tests ───────────────────────────────────────────────────────
   e2e:
     name: E2E Tests (Cypress)
     runs-on: ubuntu-latest
@@ -227,9 +273,9 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: backend
-        run: composer install --prefer-dist --no-progress --no-interaction
+        run: composer install --prefer-dist --no-progress --no-interaction --no-scripts && composer dump-autoload --optimize
 
-      - name: Setup test database
+      - name: Setup test database with fixtures
         working-directory: backend
         run: |
           cp .env.test .env.local
@@ -238,37 +284,50 @@ jobs:
           php bin/console doctrine:fixtures:load --env=test --no-interaction
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+          APP_ENV: test
+          APP_SECRET: ${{ env.APP_SECRET }}
+          MESSENGER_TRANSPORT_DSN: ${{ env.MESSENGER_TRANSPORT_DSN }}
+          MAILER_DSN: ${{ env.MAILER_DSN }}
 
       - name: Start Symfony dev server
         working-directory: backend
-        run: |
-          php -S 0.0.0.0:8080 -t public &
-          sleep 3
+        run: php -S 0.0.0.0:8080 -t public &
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           APP_ENV: test
           APP_SECRET: ${{ env.APP_SECRET }}
+          MESSENGER_TRANSPORT_DSN: ${{ env.MESSENGER_TRANSPORT_DSN }}
+          MAILER_DSN: ${{ env.MAILER_DSN }}
+
+      - name: Wait for backend to be ready
+        run: |
+          for i in {1..20}; do
+            curl -sf http://localhost:8080/api/parcels && break
+            sleep 2
+          done
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: package-lock.json
 
-      - name: Install root dependencies (Cypress)
-        run: npm ci
-
-      - name: Install frontend dependencies
-        working-directory: frontend
+      - name: Install all npm dependencies
         run: npm ci
 
       - name: Start Vue dev server
         working-directory: frontend
-        run: |
-          npm run dev &
-          sleep 5
+        run: npm run dev &
         env:
           VITE_API_BASE_URL: http://localhost:8080/api
+
+      - name: Wait for frontend to be ready
+        run: |
+          for i in {1..30}; do
+            curl -sf http://localhost:5173 && break
+            sleep 2
+          done
 
       - name: Run Cypress E2E tests
         run: npx cypress run --browser chrome --headless
@@ -282,12 +341,4 @@ jobs:
         with:
           name: cypress-screenshots
           path: cypress/screenshots/
-          retention-days: 7
-
-      - name: Upload Cypress videos
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: cypress-videos
-          path: cypress/videos/
           retention-days: 7

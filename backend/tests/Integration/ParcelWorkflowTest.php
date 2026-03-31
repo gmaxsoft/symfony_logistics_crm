@@ -16,7 +16,10 @@ class ParcelWorkflowTest extends KernelTestCase
     protected function setUp(): void
     {
         self::bootKernel();
-        $this->workflow = static::getContainer()->get('state_machine.parcel');
+
+        /** @var WorkflowInterface $workflow */
+        $workflow = static::getContainer()->get('state_machine.parcel');
+        $this->workflow = $workflow;
     }
 
     private function createParcel(string $status = ParcelStatus::DRAFT->value): Parcel

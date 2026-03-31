@@ -15,9 +15,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Validator\ConstraintViolationListInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Workflow\WorkflowInterface;
-use Symfony\Component\Uid\Uuid;
 
 #[Route('/api/parcels', name: 'api_parcels_')]
 class ParcelController extends AbstractController
@@ -30,7 +31,7 @@ class ParcelController extends AbstractController
     ) {}
 
     /**
-     * GET /api/parcels - list all parcels
+     * GET /api/parcels - list all parcels.
      */
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
@@ -40,9 +41,11 @@ class ParcelController extends AbstractController
 
         if ($status !== null) {
             $statusEnum = ParcelStatus::tryFrom($status);
+
             if ($statusEnum === null) {
                 return $this->json(['error' => 'Invalid status value'], Response::HTTP_BAD_REQUEST);
             }
+
             $parcels = $this->parcelRepository->findByStatus($statusEnum);
         } elseif ($request->query->getBoolean('active')) {
             $parcels = $this->parcelRepository->findActiveForCourier($courierName);
@@ -51,13 +54,13 @@ class ParcelController extends AbstractController
         }
 
         return $this->json(
-            array_map(fn(Parcel $p) => $this->serializeParcel($p), $parcels),
+            array_map(fn (Parcel $p) => $this->serializeParcel($p), $parcels),
             Response::HTTP_OK,
         );
     }
 
     /**
-     * POST /api/parcels - create new parcel
+     * POST /api/parcels - create new parcel.
      */
     #[Route('', name: 'create', methods: ['POST'])]
     public function create(
@@ -73,18 +76,22 @@ class ParcelController extends AbstractController
         if ($dto->senderLatitude !== null) {
             $parcel->setSenderLatitude((string) $dto->senderLatitude);
         }
+
         if ($dto->senderLongitude !== null) {
             $parcel->setSenderLongitude((string) $dto->senderLongitude);
         }
+
         if ($dto->receiverLatitude !== null) {
             $parcel->setReceiverLatitude((string) $dto->receiverLatitude);
         }
+
         if ($dto->receiverLongitude !== null) {
             $parcel->setReceiverLongitude((string) $dto->receiverLongitude);
         }
 
         $violations = $this->validator->validate($parcel);
-        if (count($violations) > 0) {
+
+        if (\count($violations) > 0) {
             return $this->json(
                 ['errors' => $this->formatViolations($violations)],
                 Response::HTTP_UNPROCESSABLE_ENTITY,
@@ -98,115 +105,119 @@ class ParcelController extends AbstractController
     }
 
     /**
-     * GET /api/parcels/{id} - get single parcel
+     * GET /api/parcels/{id} - get single parcel.
      */
     #[Route('/{id}', name: 'show', methods: ['GET'])]
     public function show(string $id): JsonResponse
     {
-        $parcel = $this->findParcelOrFail($id);
-        if ($parcel instanceof JsonResponse) {
-            return $parcel;
+        $result = $this->findParcelOrFail($id);
+
+        if ($result instanceof JsonResponse) {
+            return $result;
         }
 
-        return $this->json($this->serializeParcel($parcel));
+        return $this->json($this->serializeParcel($result));
     }
 
     /**
-     * GET /api/parcels/{id}/transitions - list available transitions for a parcel
+     * GET /api/parcels/{id}/transitions - list available transitions for a parcel.
      */
     #[Route('/{id}/transitions', name: 'transitions', methods: ['GET'])]
     public function transitions(string $id): JsonResponse
     {
-        $parcel = $this->findParcelOrFail($id);
-        if ($parcel instanceof JsonResponse) {
-            return $parcel;
+        $result = $this->findParcelOrFail($id);
+
+        if ($result instanceof JsonResponse) {
+            return $result;
         }
 
-        $enabledTransitions = $this->parcelStateMachine->getEnabledTransitions($parcel);
+        $enabledTransitions = $this->parcelStateMachine->getEnabledTransitions($result);
 
         $transitions = array_map(
-            fn($t) => [
+            fn (\Symfony\Component\Workflow\Transition $t) => [
                 'name' => $t->getName(),
                 'froms' => $t->getFroms(),
                 'tos' => $t->getTos(),
                 'label' => $this->getTransitionLabel($t->getName()),
             ],
-            $enabledTransitions
+            $enabledTransitions,
         );
 
         return $this->json([
-            'parcel_id' => (string) $parcel->getId(),
-            'current_status' => $parcel->getStatus(),
+            'parcel_id' => (string) $result->getId(),
+            'current_status' => $result->getStatus(),
             'available_transitions' => array_values($transitions),
         ]);
     }
 
     /**
-     * PATCH /api/parcels/{id}/transition/{transition} - apply a workflow transition
+     * PATCH /api/parcels/{id}/transition/{transition} - apply a workflow transition.
      */
     #[Route('/{id}/transition/{transition}', name: 'apply_transition', methods: ['PATCH'])]
     public function applyTransition(string $id, string $transition): JsonResponse
     {
-        $parcel = $this->findParcelOrFail($id);
-        if ($parcel instanceof JsonResponse) {
-            return $parcel;
+        $result = $this->findParcelOrFail($id);
+
+        if ($result instanceof JsonResponse) {
+            return $result;
         }
 
-        if (!$this->parcelStateMachine->can($parcel, $transition)) {
+        if (!$this->parcelStateMachine->can($result, $transition)) {
             $enabledTransitions = array_map(
-                fn($t) => $t->getName(),
-                $this->parcelStateMachine->getEnabledTransitions($parcel)
+                fn (\Symfony\Component\Workflow\Transition $t) => $t->getName(),
+                $this->parcelStateMachine->getEnabledTransitions($result),
             );
 
             return $this->json([
                 'error' => sprintf(
                     'Transition "%s" is not allowed from status "%s".',
                     $transition,
-                    $parcel->getStatus()
+                    $result->getStatus()
                 ),
                 'available_transitions' => $enabledTransitions,
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $this->parcelStateMachine->apply($parcel, $transition);
+        $this->parcelStateMachine->apply($result, $transition);
 
-        if ($parcel->getStatus() === ParcelStatus::DELIVERED->value) {
-            $parcel->setDeliveredAt(new \DateTimeImmutable());
+        if ($result->getStatus() === ParcelStatus::DELIVERED->value) {
+            $result->setDeliveredAt(new \DateTimeImmutable());
         }
 
         $this->em->flush();
 
         return $this->json([
             'message' => sprintf('Transition "%s" applied successfully.', $transition),
-            'parcel' => $this->serializeParcel($parcel),
+            'parcel' => $this->serializeParcel($result),
         ]);
     }
 
     /**
-     * DELETE /api/parcels/{id} - delete a parcel (only in draft)
+     * DELETE /api/parcels/{id} - delete a parcel (only in draft).
      */
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     public function delete(string $id): JsonResponse
     {
-        $parcel = $this->findParcelOrFail($id);
-        if ($parcel instanceof JsonResponse) {
-            return $parcel;
+        $result = $this->findParcelOrFail($id);
+
+        if ($result instanceof JsonResponse) {
+            return $result;
         }
 
-        if ($parcel->getStatus() !== ParcelStatus::DRAFT->value) {
+        if ($result->getStatus() !== ParcelStatus::DRAFT->value) {
             return $this->json(
                 ['error' => 'Only parcels in "draft" status can be deleted.'],
                 Response::HTTP_UNPROCESSABLE_ENTITY,
             );
         }
 
-        $this->em->remove($parcel);
+        $this->em->remove($result);
         $this->em->flush();
 
         return $this->json(null, Response::HTTP_NO_CONTENT);
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
+    // ─── Private helpers ──────────────────────────────────────────────────────
 
     private function findParcelOrFail(string $id): Parcel|JsonResponse
     {
@@ -214,13 +225,16 @@ class ParcelController extends AbstractController
             $uuid = Uuid::fromString($id);
         } catch (\InvalidArgumentException) {
             $parcel = $this->parcelRepository->findByTrackingNumber($id);
+
             if ($parcel === null) {
                 return $this->json(['error' => 'Parcel not found.'], Response::HTTP_NOT_FOUND);
             }
+
             return $parcel;
         }
 
         $parcel = $this->parcelRepository->find($uuid);
+
         if ($parcel === null) {
             return $this->json(['error' => 'Parcel not found.'], Response::HTTP_NOT_FOUND);
         }
@@ -249,11 +263,11 @@ class ParcelController extends AbstractController
             'coordinates' => [
                 'sender' => $this->buildCoordinates(
                     $parcel->getSenderLatitude(),
-                    $parcel->getSenderLongitude()
+                    $parcel->getSenderLongitude(),
                 ),
                 'receiver' => $this->buildCoordinates(
                     $parcel->getReceiverLatitude(),
-                    $parcel->getReceiverLongitude()
+                    $parcel->getReceiverLongitude(),
                 ),
             ],
             'createdAt' => $parcel->getCreatedAt()?->format(\DateTimeInterface::ATOM),
@@ -276,7 +290,7 @@ class ParcelController extends AbstractController
 
     private function getTransitionLabel(string $transitionName): string
     {
-        return match($transitionName) {
+        return match ($transitionName) {
             'pick_up' => 'Odbierz od nadawcy',
             'sort' => 'Przekaż do centrum sortowania',
             'deliver_start' => 'Rozpocznij doręczenie',
@@ -286,12 +300,17 @@ class ParcelController extends AbstractController
         };
     }
 
-    private function formatViolations(\Symfony\Component\Validator\ConstraintViolationListInterface $violations): array
+    /**
+     * @return array<string, list<string>>
+     */
+    private function formatViolations(ConstraintViolationListInterface $violations): array
     {
         $errors = [];
+
         foreach ($violations as $violation) {
-            $errors[$violation->getPropertyPath()][] = $violation->getMessage();
+            $errors[$violation->getPropertyPath()][] = (string) $violation->getMessage();
         }
+
         return $errors;
     }
 }

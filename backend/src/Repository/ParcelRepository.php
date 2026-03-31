@@ -20,10 +20,11 @@ class ParcelRepository extends ServiceEntityRepository
     }
 
     /**
-     * @return Parcel[]
+     * @return list<Parcel>
      */
     public function findByStatus(ParcelStatus $status): array
     {
+        /** @var list<Parcel> */
         return $this->createQueryBuilder('p')
             ->andWhere('p.status = :status')
             ->setParameter('status', $status->value)
@@ -33,7 +34,7 @@ class ParcelRepository extends ServiceEntityRepository
     }
 
     /**
-     * @return Parcel[]
+     * @return list<Parcel>
      */
     public function findActiveForCourier(?string $courierName = null): array
     {
@@ -44,9 +45,10 @@ class ParcelRepository extends ServiceEntityRepository
 
         if ($courierName !== null) {
             $qb->andWhere('p.courierName = :courier')
-               ->setParameter('courier', $courierName);
+                ->setParameter('courier', $courierName);
         }
 
+        /** @var list<Parcel> */
         return $qb->getQuery()->getResult();
     }
 

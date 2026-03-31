@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<psalm
+    errorLevel="4"
+    resolveFromConfigFile="true"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+    xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+    findUnusedBaselineEntry="true"
+    findUnusedCode="true"
+>
+    <projectFiles>
+        <directory name="src" />
+        <ignoreFiles>
+            <directory name="vendor" />
+            <directory name="var" />
+        </ignoreFiles>
+    </projectFiles>
+
+    <plugins>
+        <pluginClass class="Psalm\SymfonyPsalmPlugin\Plugin">
+            <containerXml>var/cache/test/App_KernelTestDebugContainer.xml</containerXml>
+        </pluginClass>
+        <pluginClass class="Weirdan\DoctrinePsalmPlugin\Plugin" />
+    </plugins>
+
+    <issueHandlers>
+        <!-- Symfony DI - properties injected via constructor promotion are always set -->
+        <PropertyNotSetInConstructor>
+            <errorLevel type="suppress">
+                <referencedProperty name="App\Entity\Parcel::id" />
+                <referencedProperty name="App\Entity\Parcel::trackingNumber" />
+                <referencedProperty name="App\Entity\Parcel::createdAt" />
+                <referencedProperty name="App\Entity\Parcel::updatedAt" />
+            </errorLevel>
+        </PropertyNotSetInConstructor>
+
+        <!-- Doctrine entity IDs start as null before persist -->
+        <PossiblyNullArgument>
+            <errorLevel type="suppress">
+                <file name="src/Entity/Parcel.php" />
+            </errorLevel>
+        </PossiblyNullArgument>
+
+        <!-- Workflow getSubject() returns mixed - we use @var doc annotations -->
+        <MixedAssignment>
+            <errorLevel type="info">
+                <file name="src/EventSubscriber/ParcelWorkflowSubscriber.php" />
+            </errorLevel>
+        </MixedAssignment>
+    </issueHandlers>
+</psalm>

@@ -8,3 +8,5 @@
 .phpunit.result.cache
 .phpunit.cache/
 phpstan-baseline.neon
+.php-cs-fixer.cache
+psalm-baseline.xml

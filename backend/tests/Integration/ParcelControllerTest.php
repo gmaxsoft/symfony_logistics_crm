@@ -7,18 +7,23 @@ namespace App\Tests\Integration;
 use App\Entity\Parcel;
 use App\Enum\ParcelStatus;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Response;
 
 class ParcelControllerTest extends WebTestCase
 {
-    private \Symfony\Bundle\FrameworkBundle\KernelBrowser $client;
+    private KernelBrowser $client;
     private EntityManagerInterface $em;
 
     protected function setUp(): void
     {
         $this->client = static::createClient();
         $this->em = static::getContainer()->get(EntityManagerInterface::class);
+
+        // Truncate parcels table before each test for isolation
+        $connection = $this->em->getConnection();
+        $connection->executeStatement('TRUNCATE TABLE parcels RESTART IDENTITY CASCADE');
     }
 
     private function createTestParcel(string $status = 'draft'): Parcel
@@ -38,10 +43,11 @@ class ParcelControllerTest extends WebTestCase
     public function testListParcelsReturnsOk(): void
     {
         $this->client->request('GET', '/api/parcels');
+
         $this->assertResponseStatusCodeSame(Response::HTTP_OK);
         $this->assertResponseHeaderSame('Content-Type', 'application/json');
 
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         $this->assertIsArray($data);
     }
 
@@ -53,7 +59,7 @@ class ParcelControllerTest extends WebTestCase
             [],
             [],
             ['CONTENT_TYPE' => 'application/json'],
-            json_encode([
+            (string) json_encode([
                 'senderAddress' => 'ul. Nowa 1, 00-001 Warszawa',
                 'receiverAddress' => 'ul. Odbiorcza 5, 31-001 Kraków',
                 'weight' => 1.5,
@@ -62,11 +68,12 @@ class ParcelControllerTest extends WebTestCase
 
         $this->assertResponseStatusCodeSame(Response::HTTP_CREATED);
 
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
+        $this->assertIsArray($data);
         $this->assertArrayHasKey('id', $data);
         $this->assertArrayHasKey('trackingNumber', $data);
         $this->assertSame('draft', $data['status']);
-        $this->assertStringStartsWith('PLG', $data['trackingNumber']);
+        $this->assertStringStartsWith('PLG', (string) $data['trackingNumber']);
     }
 
     public function testCreateParcelValidatesRequiredFields(): void
@@ -77,7 +84,7 @@ class ParcelControllerTest extends WebTestCase
             [],
             [],
             ['CONTENT_TYPE' => 'application/json'],
-            json_encode([]),
+            '{}',
         );
 
         $this->assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -89,9 +96,11 @@ class ParcelControllerTest extends WebTestCase
         $id = (string) $parcel->getId();
 
         $this->client->request('GET', "/api/parcels/{$id}");
+
         $this->assertResponseStatusCodeSame(Response::HTTP_OK);
 
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
+        $this->assertIsArray($data);
         $this->assertSame($id, $data['id']);
         $this->assertSame('draft', $data['status']);
     }
@@ -99,6 +108,7 @@ class ParcelControllerTest extends WebTestCase
     public function testGetNonExistentParcelReturns404(): void
     {
         $this->client->request('GET', '/api/parcels/00000000-0000-0000-0000-000000000000');
+
         $this->assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
@@ -108,9 +118,11 @@ class ParcelControllerTest extends WebTestCase
         $id = (string) $parcel->getId();
 
         $this->client->request('GET', "/api/parcels/{$id}/transitions");
+
         $this->assertResponseStatusCodeSame(Response::HTTP_OK);
 
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
+        $this->assertIsArray($data);
         $this->assertSame('draft', $data['current_status']);
 
         $transitionNames = array_column($data['available_transitions'], 'name');
@@ -123,9 +135,11 @@ class ParcelControllerTest extends WebTestCase
         $id = (string) $parcel->getId();
 
         $this->client->request('PATCH', "/api/parcels/{$id}/transition/pick_up");
+
         $this->assertResponseStatusCodeSame(Response::HTTP_OK);
 
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
+        $this->assertIsArray($data);
         $this->assertSame('picked_up', $data['parcel']['status']);
     }
 
@@ -135,9 +149,11 @@ class ParcelControllerTest extends WebTestCase
         $id = (string) $parcel->getId();
 
         $this->client->request('PATCH', "/api/parcels/{$id}/transition/confirm_delivery");
+
         $this->assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
 
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
+        $this->assertIsArray($data);
         $this->assertArrayHasKey('error', $data);
     }
 
@@ -153,13 +169,15 @@ class ParcelControllerTest extends WebTestCase
             $this->client->request('PATCH', "/api/parcels/{$id}/transition/{$transition}");
             $this->assertResponseIsSuccessful();
 
-            $data = json_decode($this->client->getResponse()->getContent(), true);
+            $data = json_decode((string) $this->client->getResponse()->getContent(), true);
+            $this->assertIsArray($data);
             $this->assertSame($expectedStatuses[$i], $data['parcel']['status']);
         }
 
         // Verify delivered_at is set
         $this->client->request('GET', "/api/parcels/{$id}");
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
+        $this->assertIsArray($data);
         $this->assertNotNull($data['deliveredAt']);
     }
 
@@ -169,6 +187,7 @@ class ParcelControllerTest extends WebTestCase
         $id = (string) $parcel->getId();
 
         $this->client->request('DELETE', "/api/parcels/{$id}");
+
         $this->assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
 
         // Verify it's gone
@@ -182,6 +201,7 @@ class ParcelControllerTest extends WebTestCase
         $id = (string) $parcel->getId();
 
         $this->client->request('DELETE', "/api/parcels/{$id}");
+
         $this->assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
@@ -192,12 +212,21 @@ class ParcelControllerTest extends WebTestCase
         $this->createTestParcel('picked_up');
 
         $this->client->request('GET', '/api/parcels?status=draft');
+
         $this->assertResponseIsSuccessful();
 
-        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         $this->assertIsArray($data);
+
         foreach ($data as $item) {
             $this->assertSame('draft', $item['status']);
         }
+    }
+
+    public function testFilterByInvalidStatusReturns400(): void
+    {
+        $this->client->request('GET', '/api/parcels?status=nonexistent');
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
     }
 }

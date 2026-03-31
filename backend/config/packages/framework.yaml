@@ -16,10 +16,6 @@ framework:
     serializer:
         enable_attributes: true
 
-    validation:
-        email_validation_mode: html5
-        enable_attributes: true
-
     property_info:
         enabled: true
 

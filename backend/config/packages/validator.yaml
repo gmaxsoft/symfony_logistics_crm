@@ -1,0 +1,9 @@
+framework:
+    validation:
+        email_validation_mode: html5
+        enable_attributes: true
+
+when@test:
+    framework:
+        validation:
+            not_compromised_password: false
