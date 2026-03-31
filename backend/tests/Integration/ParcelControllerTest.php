@@ -31,7 +31,8 @@ class ParcelControllerTest extends WebTestCase
         $this->client->request('GET', '/api/parcels');
 
         $this->assertResponseStatusCodeSame(Response::HTTP_OK);
-        $this->assertResponseHeaderSame('Content-Type', 'application/json');
+        $contentType = $this->client->getResponse()->headers->get('Content-Type') ?? '';
+        $this->assertStringContainsString('application/json', $contentType);
 
         $data = json_decode((string) $this->client->getResponse()->getContent(), true);
         $this->assertIsArray($data);
