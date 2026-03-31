@@ -28,7 +28,8 @@ describe('Parcel REST API', () => {
       expect(response.body.id).to.be.a('string')
       expect(response.body.trackingNumber).to.match(/^PLG/)
       expect(response.body.status).to.equal('draft')
-      expect(response.body.weight).to.equal(1.234)
+      // JSON float / DECIMAL serializacja — unikaj sztywnego === 1.234
+      expect(response.body.weight).to.be.closeTo(1.234, 0.0001)
     })
   })
 
