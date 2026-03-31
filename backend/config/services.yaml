@@ -1,0 +1,21 @@
+parameters:
+    locale: 'pl'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Enum/'
+            - '../src/Kernel.php'
+
+    # Workflow injection by name
+    App\Controller\ParcelController:
+        arguments:
+            $parcelStateMachine: '@state_machine.parcel'

@@ -1,0 +1,10 @@
+/.env.local
+/.env.*.local
+/vendor/
+/var/
+/public/bundles/
+/public/build/
+/node_modules/
+.phpunit.result.cache
+.phpunit.cache/
+phpstan-baseline.neon

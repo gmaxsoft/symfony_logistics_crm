@@ -1,0 +1,54 @@
+framework:
+    workflows:
+        parcel:
+            type: state_machine
+            audit_trail:
+                enabled: true
+            marking_store:
+                type: method
+                property: status
+            supports:
+                - App\Entity\Parcel
+            initial_marking: draft
+            places:
+                - draft
+                - picked_up
+                - in_sorting_center
+                - out_for_delivery
+                - delivered
+                - failed
+            transitions:
+                pick_up:
+                    from: draft
+                    to: picked_up
+                    metadata:
+                        label: 'Odbierz od nadawcy'
+                        icon: 'mdi-package-up'
+                sort:
+                    from: picked_up
+                    to: in_sorting_center
+                    metadata:
+                        label: 'Przekaż do centrum sortowania'
+                        icon: 'mdi-sort'
+                deliver_start:
+                    from: in_sorting_center
+                    to: out_for_delivery
+                    metadata:
+                        label: 'Rozpocznij doręczenie'
+                        icon: 'mdi-truck-delivery'
+                confirm_delivery:
+                    from: out_for_delivery
+                    to: delivered
+                    guard: 'subject.getStatus() == "out_for_delivery"'
+                    metadata:
+                        label: 'Potwierdź dostarczenie'
+                        icon: 'mdi-check-circle'
+                mark_failed:
+                    from:
+                        - picked_up
+                        - in_sorting_center
+                        - out_for_delivery
+                    to: failed
+                    metadata:
+                        label: 'Oznacz jako nieudane'
+                        icon: 'mdi-close-circle'
