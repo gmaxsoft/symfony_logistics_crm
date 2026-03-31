@@ -87,31 +87,6 @@ jobs:
         working-directory: backend
         run: cp .env.test .env.local
 
-      - name: Warmup Symfony cache (dev, for PHPStan container XML)
-        working-directory: backend
-        run: |
-          php bin/console cache:warmup --env=dev \
-            --no-debug \
-            -e dev
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          APP_ENV: dev
-          APP_SECRET: ${{ env.APP_SECRET }}
-        continue-on-error: true
-
-      - name: Run PHP CS Fixer (check only)
-        working-directory: backend
-        run: vendor/bin/php-cs-fixer check --diff --no-interaction
-
-      - name: Run PHPStan (static analysis)
-        working-directory: backend
-        run: vendor/bin/phpstan analyse --memory-limit=256M --no-progress
-
-      - name: Run Psalm (static analysis)
-        working-directory: backend
-        run: vendor/bin/psalm --no-progress --output-format=github
-        continue-on-error: true
-
       - name: Create test database and run migrations
         working-directory: backend
         run: |
@@ -123,6 +98,30 @@ jobs:
           APP_SECRET: ${{ env.APP_SECRET }}
           MESSENGER_TRANSPORT_DSN: ${{ env.MESSENGER_TRANSPORT_DSN }}
           MAILER_DSN: ${{ env.MAILER_DSN }}
+
+      - name: Warmup Symfony cache (dev, for PHPStan container XML)
+        working-directory: backend
+        run: php bin/console cache:warmup --env=dev
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          APP_ENV: dev
+          APP_SECRET: ${{ env.APP_SECRET }}
+          MESSENGER_TRANSPORT_DSN: ${{ env.MESSENGER_TRANSPORT_DSN }}
+          MAILER_DSN: ${{ env.MAILER_DSN }}
+        continue-on-error: true
+
+      - name: Run PHP CS Fixer (check only)
+        working-directory: backend
+        run: vendor/bin/php-cs-fixer check --diff --no-interaction
+
+      - name: Run PHPStan (static analysis)
+        working-directory: backend
+        run: vendor/bin/phpstan analyse --memory-limit=512M --no-progress
+
+      - name: Run Psalm (static analysis)
+        working-directory: backend
+        run: vendor/bin/psalm --no-progress --output-format=github
+        continue-on-error: true
 
       - name: Create coverage directory
         run: mkdir -p backend/coverage

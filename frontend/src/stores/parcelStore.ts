@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { parcelsApi } from '@/api/parcels'
-import type { Parcel, WorkflowTransition, ParcelStatusValue } from '@/types/parcel'
+import type { Parcel, WorkflowTransition } from '@/types/parcel'
 
 export const useParcelStore = defineStore('parcel', () => {
   // ─── State ────────────────────────────────────────────────────────────────

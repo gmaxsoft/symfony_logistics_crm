@@ -17,7 +17,4 @@ parameters:
         # Workflow getSubject() returns mixed by design - handled in extractParcel()
         - identifier: mixedAssignment
           path: src/EventSubscriber/ParcelWorkflowSubscriber.php
-        # Doctrine entity ID is null before persist - safe to cast to string after flush
-        - message: '#Cannot cast mixed to string#'
-          path: src/Controller/ParcelController.php
     treatPhpDocTypesAsCertain: false

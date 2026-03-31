@@ -18,6 +18,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Component\Workflow\Transition;
 use Symfony\Component\Workflow\WorkflowInterface;
 
 #[Route('/api/parcels', name: 'api_parcels_')]
@@ -134,7 +135,7 @@ class ParcelController extends AbstractController
         $enabledTransitions = $this->parcelStateMachine->getEnabledTransitions($result);
 
         $transitions = array_map(
-            fn (\Symfony\Component\Workflow\Transition $t) => [
+            fn (Transition $t) => [
                 'name' => $t->getName(),
                 'froms' => $t->getFroms(),
                 'tos' => $t->getTos(),
@@ -144,7 +145,7 @@ class ParcelController extends AbstractController
         );
 
         return $this->json([
-            'parcel_id' => (string) $result->getId(),
+            'parcel_id' => $result->getId()?->toRfc4122() ?? '',
             'current_status' => $result->getStatus(),
             'available_transitions' => array_values($transitions),
         ]);
@@ -164,7 +165,7 @@ class ParcelController extends AbstractController
 
         if (!$this->parcelStateMachine->can($result, $transition)) {
             $enabledTransitions = array_map(
-                fn (\Symfony\Component\Workflow\Transition $t) => $t->getName(),
+                fn (Transition $t) => $t->getName(),
                 $this->parcelStateMachine->getEnabledTransitions($result),
             );
 
@@ -250,14 +251,14 @@ class ParcelController extends AbstractController
         $statusEnum = $parcel->getStatusEnum();
 
         return [
-            'id' => (string) $parcel->getId(),
+            'id' => $parcel->getId()?->toRfc4122() ?? '',
             'trackingNumber' => $parcel->getTrackingNumber(),
             'status' => $parcel->getStatus(),
             'statusLabel' => $statusEnum->label(),
             'statusColor' => $statusEnum->color(),
             'senderAddress' => $parcel->getSenderAddress(),
             'receiverAddress' => $parcel->getReceiverAddress(),
-            'weight' => (float) $parcel->getWeight(),
+            'weight' => (float) ($parcel->getWeight() ?? '0'),
             'courierName' => $parcel->getCourierName(),
             'notes' => $parcel->getNotes(),
             'coordinates' => [

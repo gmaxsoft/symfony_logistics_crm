@@ -68,8 +68,8 @@ class ParcelWorkflowSubscriber implements EventSubscriberInterface
         $parcel = $this->extractParcel($event);
 
         $this->logger->info('Parcel workflow transition completed', [
-            'parcel_id' => (string) $parcel->getId(),
-            'tracking_number' => $parcel->getTrackingNumber(),
+            'parcel_id' => $parcel->getId()?->toRfc4122() ?? '',
+            'tracking_number' => $parcel->getTrackingNumber() ?? '',
             'transition' => $event->getTransition()?->getName(),
             'new_status' => $parcel->getStatus(),
         ]);
@@ -87,8 +87,8 @@ class ParcelWorkflowSubscriber implements EventSubscriberInterface
             $parcel->setDeliveredAt(new \DateTimeImmutable());
 
             $this->logger->info('Parcel delivered', [
-                'parcel_id' => (string) $parcel->getId(),
-                'tracking_number' => $parcel->getTrackingNumber(),
+                'parcel_id' => $parcel->getId()?->toRfc4122() ?? '',
+                'tracking_number' => $parcel->getTrackingNumber() ?? '',
             ]);
         }
     }
