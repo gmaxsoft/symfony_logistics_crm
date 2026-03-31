@@ -11,12 +11,4 @@ parameters:
         container_xml_path: var/cache/dev/App_KernelDevDebugContainer.xml
         # Fallback for CI (test env)
         console_application_loader: bin/console
-    ignoreErrors:
-        # Doctrine QueryBuilder returns mixed from getResult() - typed via inline cast comments
-        - '#Call to an undefined method Doctrine\\ORM\\QueryBuilder::#'
-        - message: '#Method App\\Repository\\ParcelRepository::(findByStatus|findActiveForCourier)\(\) should return#'
-          identifier: return.type
-        # Workflow getSubject() returns mixed by design - handled in extractParcel()
-        - identifier: mixedAssignment
-          path: src/EventSubscriber/ParcelWorkflowSubscriber.php
     treatPhpDocTypesAsCertain: false

@@ -24,13 +24,15 @@ class ParcelRepository extends ServiceEntityRepository
      */
     public function findByStatus(ParcelStatus $status): array
     {
-        /* @var list<Parcel> */
-        return $this->createQueryBuilder('p')
+        /** @var list<Parcel> $parcels */
+        $parcels = $this->createQueryBuilder('p')
             ->andWhere('p.status = :status')
             ->setParameter('status', $status->value)
             ->orderBy('p.createdAt', 'DESC')
             ->getQuery()
             ->getResult();
+
+        return $parcels;
     }
 
     /**
@@ -48,8 +50,10 @@ class ParcelRepository extends ServiceEntityRepository
                 ->setParameter('courier', $courierName);
         }
 
-        /* @var list<Parcel> */
-        return $qb->getQuery()->getResult();
+        /** @var list<Parcel> $parcels */
+        $parcels = $qb->getQuery()->getResult();
+
+        return $parcels;
     }
 
     public function findByTrackingNumber(string $trackingNumber): ?Parcel

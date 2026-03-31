@@ -51,6 +51,8 @@ return (new Config())
         'phpdoc_align' => ['align' => 'left'],
         'phpdoc_order' => true,
         'phpdoc_separation' => true,
+        // Keep /** @var */ for PHPStan (phpdoc_to_comment would break static analysis)
+        'phpdoc_to_comment' => false,
         'no_superfluous_phpdoc_tags' => ['allow_mixed' => true],
 
         // Whitespace
