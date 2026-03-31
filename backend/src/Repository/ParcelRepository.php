@@ -24,7 +24,7 @@ class ParcelRepository extends ServiceEntityRepository
      */
     public function findByStatus(ParcelStatus $status): array
     {
-        /** @var list<Parcel> */
+        /* @var list<Parcel> */
         return $this->createQueryBuilder('p')
             ->andWhere('p.status = :status')
             ->setParameter('status', $status->value)
@@ -48,7 +48,7 @@ class ParcelRepository extends ServiceEntityRepository
                 ->setParameter('courier', $courierName);
         }
 
-        /** @var list<Parcel> */
+        /* @var list<Parcel> */
         return $qb->getQuery()->getResult();
     }
 

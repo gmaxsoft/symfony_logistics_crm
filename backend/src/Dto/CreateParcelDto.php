@@ -38,5 +38,6 @@ final class CreateParcelDto
         public readonly ?float $receiverLongitude = null,
 
         public readonly ?string $notes = null,
-    ) {}
+    ) {
+    }
 }

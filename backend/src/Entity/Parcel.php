@@ -8,8 +8,8 @@ use App\Enum\ParcelStatus;
 use App\Repository\ParcelRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ParcelRepository::class)]
 #[ORM\Table(name: 'parcels')]
@@ -104,6 +104,7 @@ class Parcel
     public function setTrackingNumber(string $trackingNumber): static
     {
         $this->trackingNumber = $trackingNumber;
+
         return $this;
     }
 
@@ -115,6 +116,7 @@ class Parcel
     public function setStatus(string $status): static
     {
         $this->status = $status;
+
         return $this;
     }
 
@@ -131,6 +133,7 @@ class Parcel
     public function setSenderAddress(string $senderAddress): static
     {
         $this->senderAddress = $senderAddress;
+
         return $this;
     }
 
@@ -142,6 +145,7 @@ class Parcel
     public function setReceiverAddress(string $receiverAddress): static
     {
         $this->receiverAddress = $receiverAddress;
+
         return $this;
     }
 
@@ -153,6 +157,7 @@ class Parcel
     public function setWeight(string $weight): static
     {
         $this->weight = $weight;
+
         return $this;
     }
 
@@ -164,6 +169,7 @@ class Parcel
     public function setSenderLatitude(?string $senderLatitude): static
     {
         $this->senderLatitude = $senderLatitude;
+
         return $this;
     }
 
@@ -175,6 +181,7 @@ class Parcel
     public function setSenderLongitude(?string $senderLongitude): static
     {
         $this->senderLongitude = $senderLongitude;
+
         return $this;
     }
 
@@ -186,6 +193,7 @@ class Parcel
     public function setReceiverLatitude(?string $receiverLatitude): static
     {
         $this->receiverLatitude = $receiverLatitude;
+
         return $this;
     }
 
@@ -197,6 +205,7 @@ class Parcel
     public function setReceiverLongitude(?string $receiverLongitude): static
     {
         $this->receiverLongitude = $receiverLongitude;
+
         return $this;
     }
 
@@ -208,6 +217,7 @@ class Parcel
     public function setCourierName(?string $courierName): static
     {
         $this->courierName = $courierName;
+
         return $this;
     }
 
@@ -219,6 +229,7 @@ class Parcel
     public function setNotes(?string $notes): static
     {
         $this->notes = $notes;
+
         return $this;
     }
 
@@ -240,6 +251,7 @@ class Parcel
     public function setDeliveredAt(?\DateTimeImmutable $deliveredAt): static
     {
         $this->deliveredAt = $deliveredAt;
+
         return $this;
     }
 }

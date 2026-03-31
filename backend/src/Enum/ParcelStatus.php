@@ -15,7 +15,7 @@ enum ParcelStatus: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::DRAFT => 'Wersja robocza',
             self::PICKED_UP => 'Odebrana od nadawcy',
             self::IN_SORTING_CENTER => 'W centrum sortowania',
@@ -27,7 +27,7 @@ enum ParcelStatus: string
 
     public function color(): string
     {
-        return match($this) {
+        return match ($this) {
             self::DRAFT => 'grey',
             self::PICKED_UP => 'blue',
             self::IN_SORTING_CENTER => 'orange',

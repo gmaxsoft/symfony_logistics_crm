@@ -15,7 +15,8 @@ class ParcelWorkflowSubscriber implements EventSubscriberInterface
 {
     public function __construct(
         private readonly LoggerInterface $logger,
-    ) {}
+    ) {
+    }
 
     /**
      * @return array<string, string>
@@ -103,11 +104,7 @@ class ParcelWorkflowSubscriber implements EventSubscriberInterface
         $subject = $event->getSubject();
 
         if (!$subject instanceof Parcel) {
-            throw new \InvalidArgumentException(sprintf(
-                'Expected subject to be %s, got %s.',
-                Parcel::class,
-                \get_debug_type($subject),
-            ));
+            throw new \InvalidArgumentException(\sprintf('Expected subject to be %s, got %s.', Parcel::class, get_debug_type($subject)));
         }
 
         return $subject;

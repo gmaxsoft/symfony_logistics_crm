@@ -29,7 +29,8 @@ class ParcelController extends AbstractController
         private readonly ParcelRepository $parcelRepository,
         private readonly WorkflowInterface $parcelStateMachine,
         private readonly ValidatorInterface $validator,
-    ) {}
+    ) {
+    }
 
     /**
      * GET /api/parcels - list all parcels.
@@ -165,15 +166,15 @@ class ParcelController extends AbstractController
 
         if (!$this->parcelStateMachine->can($result, $transition)) {
             $enabledTransitions = array_map(
-                fn (Transition $t) => $t->getName(),
+                static fn (Transition $t) => $t->getName(),
                 $this->parcelStateMachine->getEnabledTransitions($result),
             );
 
             return $this->json([
-                'error' => sprintf(
+                'error' => \sprintf(
                     'Transition "%s" is not allowed from status "%s".',
                     $transition,
-                    $result->getStatus()
+                    $result->getStatus(),
                 ),
                 'available_transitions' => $enabledTransitions,
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -188,7 +189,7 @@ class ParcelController extends AbstractController
         $this->em->flush();
 
         return $this->json([
-            'message' => sprintf('Transition "%s" applied successfully.', $transition),
+            'message' => \sprintf('Transition "%s" applied successfully.', $transition),
             'parcel' => $this->serializeParcel($result),
         ]);
     }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Integration;
 
 use App\Entity\Parcel;
-use App\Enum\ParcelStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -14,6 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 class ParcelControllerTest extends WebTestCase
 {
     private KernelBrowser $client;
+
     private EntityManagerInterface $em;
 
     protected function setUp(): void
@@ -24,20 +24,6 @@ class ParcelControllerTest extends WebTestCase
         // Truncate parcels table before each test for isolation
         $connection = $this->em->getConnection();
         $connection->executeStatement('TRUNCATE TABLE parcels RESTART IDENTITY CASCADE');
-    }
-
-    private function createTestParcel(string $status = 'draft'): Parcel
-    {
-        $parcel = new Parcel();
-        $parcel->setSenderAddress('ul. Testowa 1, 00-001 Warszawa');
-        $parcel->setReceiverAddress('ul. Odbiorcza 5, 31-001 Kraków');
-        $parcel->setWeight('2.500');
-        $parcel->setStatus($status);
-
-        $this->em->persist($parcel);
-        $this->em->flush();
-
-        return $parcel;
     }
 
     public function testListParcelsReturnsOk(): void
@@ -228,5 +214,19 @@ class ParcelControllerTest extends WebTestCase
         $this->client->request('GET', '/api/parcels?status=nonexistent');
 
         $this->assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
+    }
+
+    private function createTestParcel(string $status = 'draft'): Parcel
+    {
+        $parcel = new Parcel();
+        $parcel->setSenderAddress('ul. Testowa 1, 00-001 Warszawa');
+        $parcel->setReceiverAddress('ul. Odbiorcza 5, 31-001 Kraków');
+        $parcel->setWeight('2.500');
+        $parcel->setStatus($status);
+
+        $this->em->persist($parcel);
+        $this->em->flush();
+
+        return $parcel;
     }
 }

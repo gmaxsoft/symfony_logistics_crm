@@ -22,16 +22,6 @@ class ParcelWorkflowTest extends KernelTestCase
         $this->workflow = $workflow;
     }
 
-    private function createParcel(string $status = ParcelStatus::DRAFT->value): Parcel
-    {
-        $parcel = new Parcel();
-        $parcel->setSenderAddress('Sender Address');
-        $parcel->setReceiverAddress('Receiver Address');
-        $parcel->setWeight('1.000');
-        $parcel->setStatus($status);
-        return $parcel;
-    }
-
     public function testInitialStatusIsDraft(): void
     {
         $parcel = $this->createParcel();
@@ -125,5 +115,16 @@ class ParcelWorkflowTest extends KernelTestCase
 
         $this->workflow->apply($parcel, 'confirm_delivery');
         $this->assertSame('delivered', $parcel->getStatus());
+    }
+
+    private function createParcel(string $status = ParcelStatus::DRAFT->value): Parcel
+    {
+        $parcel = new Parcel();
+        $parcel->setSenderAddress('Sender Address');
+        $parcel->setReceiverAddress('Receiver Address');
+        $parcel->setWeight('1.000');
+        $parcel->setStatus($status);
+
+        return $parcel;
     }
 }
