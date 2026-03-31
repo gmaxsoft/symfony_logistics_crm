@@ -1,37 +1,44 @@
 # =============================================================================
-# Multi-stage Dockerfile for Vue 3 + Vite frontend
+# Multi-stage Dockerfile for Vue 3 + Vite frontend (npm workspaces monorepo)
+# Build from repository root: docker build -f frontend/Dockerfile .
 # =============================================================================
 
 # ─── Development Stage ────────────────────────────────────────────────────────
-FROM node:20-alpine AS dev
+FROM node:22-alpine AS dev
 
 WORKDIR /app
 
-# Install dependencies first (layer cache optimization)
-COPY package*.json ./
+# Root lockfile + workspace manifests (lock lives at monorepo root)
+COPY package.json package-lock.json ./
+COPY frontend/package.json ./frontend/
+
 RUN npm ci
+
+WORKDIR /app/frontend
 
 EXPOSE 5173
 
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # ─── Build Stage ──────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package.json package-lock.json ./
+COPY frontend/package.json ./frontend/
+
 RUN npm ci
 
-COPY . .
+COPY frontend/ ./frontend/
 
-RUN npm run build
+RUN npm run build --workspace=frontend
 
 # ─── Production Stage (nginx serves static files) ─────────────────────────────
 FROM nginx:1.25-alpine AS prod
 
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/frontend/dist /usr/share/nginx/html
+COPY frontend/docker/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

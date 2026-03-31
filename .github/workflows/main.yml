@@ -216,7 +216,7 @@ jobs:
       - name: Build Frontend image (dev stage)
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
+          context: .
           file: ./frontend/Dockerfile
           target: dev
           push: false

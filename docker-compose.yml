@@ -48,15 +48,15 @@ services:
   # ─── Frontend build (Vite dev server for development) ──────────────────────
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       target: dev
     container_name: logistics_frontend
     restart: unless-stopped
     ports:
       - "5173:5173"
     volumes:
-      - ./frontend:/app
+      - ./frontend:/app/frontend
       - frontend_node_modules:/app/node_modules
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api}
